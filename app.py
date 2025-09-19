@@ -4,7 +4,7 @@ from transformers import pipeline
 
 # --- Constants ---
 MAX_CHARS = 4000       # truncate long input to avoid token overflow
-MAX_QUESTIONS = 15      # maximum questions to generate safely
+MAX_QUESTIONS = 10     # maximum questions allowed
 
 # --- Load QA and QG pipelines with caching ---
 @st.cache_resource(show_spinner=False)
@@ -34,7 +34,7 @@ num_qs = st.number_input(
     "🔢 How many possible questions do you want?",
     min_value=1,
     max_value=MAX_QUESTIONS,
-    value=3,
+    value=5,
     step=1
 )
 
