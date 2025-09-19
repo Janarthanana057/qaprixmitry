@@ -85,10 +85,9 @@ if st.button("🚀 Get Answer + Other Questions"):
         st.warning("⚠️ Please enter a paragraph to continue. 😔✨")
     else:
         with st.spinner("🤔 Thinking... Please wait ⏳"):
-            # Truncate context to avoid token limit issues
             context_truncated = context[:MAX_CHARS]
 
-            # --- Handle user question ---
+            # --- User question ---
             if user_question.strip():
                 try:
                     answer = qa_pipeline(question=user_question, context=context_truncated)
@@ -101,7 +100,6 @@ if st.button("🚀 Get Answer + Other Questions"):
             try:
                 progress = st.progress(0)
                 for idx in range(num_qs):
-                    # Generate one question at a time
                     q = qg_pipeline(context_truncated, max_length=64, do_sample=True)[0]['generated_text']
                     try:
                         qa_result = qa_pipeline(question=q, context=context_truncated)
@@ -111,7 +109,7 @@ if st.button("🚀 Get Answer + Other Questions"):
                         st.markdown(f"**{idx+1}. ❓ Q:** {q}")
                         st.markdown("➡️ **A:** (No clear answer found) ⚠️")
                     progress.progress((idx+1)/num_qs)
-                    time.sleep(0.2)  # small delay for animation
+                    time.sleep(0.2)
                 st.balloons()
             except:
                 st.error("❌ Could not generate questions. Try shorter text or fewer questions.")
