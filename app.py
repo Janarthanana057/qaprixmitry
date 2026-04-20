@@ -1,74 +1,73 @@
-import time
 import streamlit as st
 from transformers import pipeline
+import time
 
 # --- Constants ---
-MAX_CHARS = 4000       # truncate long input to avoid token overflow
-MAX_QUESTIONS = 10     # maximum questions allowed
+MAX_CHARS = 4000
+MAX_QUESTIONS = 10
 
-# --- Load QA and QG pipelines with caching ---
+# --- Load pipelines ---
 @st.cache_resource(show_spinner=False)
 def load_pipelines():
-    # CPU-only, small models to avoid torch issues
     qa = pipeline(
-        "question-answering",
+        task="question-answering",
         model="distilbert-base-cased-distilled-squad",
-        device=-1  # CPU
+        device=-1
     )
     qg = pipeline(
-        "text2text-generation",
+        task="text2text-generation",
         model="valhalla/t5-small-qg-hl",
-        device=-1  # CPU
+        device=-1
     )
     return qa, qg
 
 qa_pipeline, qg_pipeline = load_pipelines()
 
-# --- Title ---
-st.title("📚 Smart Q&A System 💡 with Flexible Question Generation 🌱✨")
+# --- UI ---
+st.title("📚 Smart Q&A System 💡")
 
-# --- User input ---
-context = st.text_area("📝 Enter a paragraph (context):")
+context = st.text_area("📝 Enter a paragraph:")
 user_question = st.text_input("❓ Enter your question (optional):")
+
 num_qs = st.number_input(
-    "🔢 How many possible questions do you want?",
+    "🔢 Number of generated questions:",
     min_value=1,
     max_value=MAX_QUESTIONS,
-    value=5,
-    step=1
+    value=5
 )
 
 # --- Button ---
-if st.button("🚀 Get Answer + Other Questions"):
+if st.button("🚀 Generate"):
     if not context.strip():
-        st.warning("⚠️ Please enter a paragraph to continue. 😔✨")
+        st.warning("⚠️ Enter some text first")
     else:
-        with st.spinner("🤔 Thinking... Please wait ⏳"):
-            context_truncated = context[:MAX_CHARS]
+        with st.spinner("Processing..."):
+            context = context[:MAX_CHARS]
 
-            # --- User question ---
+            # Answer user question
             if user_question.strip():
                 try:
-                    answer = qa_pipeline(question=user_question, context=context_truncated)
-                    st.success(f"💡 Answer to your question: 👉 {answer['answer']}")
+                    ans = qa_pipeline(question=user_question, context=context)
+                    st.success(f"Answer: {ans['answer']}")
                 except:
-                    st.error("❌ Could not find an answer for your question.")
+                    st.error("Could not answer your question")
 
-            # --- Generate other possible questions ---
-            st.markdown("### 🧠 Other Possible Questions with Answers 💭")
-            try:
-                progress = st.progress(0)
-                for idx in range(num_qs):
-                    q = qg_pipeline(context_truncated, max_length=64, do_sample=True)[0]['generated_text']
-                    try:
-                        qa_result = qa_pipeline(question=q, context=context_truncated)
-                        st.markdown(f"**{idx+1}. ❓ Q:** {q}")
-                        st.markdown(f"➡️ **A:** {qa_result['answer']} ✅")
-                    except:
-                        st.markdown(f"**{idx+1}. ❓ Q:** {q}")
-                        st.markdown("➡️ **A:** (No clear answer found) ⚠️")
-                    progress.progress((idx+1)/num_qs)
-                    time.sleep(0.2)
-                st.balloons()
-            except:
-                st.error("❌ Could not generate questions. Try shorter text or fewer questions.")
+            # Generate questions
+            st.subheader("Generated Questions & Answers")
+            progress = st.progress(0)
+
+            for i in range(num_qs):
+                try:
+                    q = qg_pipeline(context, max_length=64, do_sample=True)[0]['generated_text']
+                    res = qa_pipeline(question=q, context=context)
+
+                    st.write(f"{i+1}. Q: {q}")
+                    st.write(f"   A: {res['answer']}")
+
+                except:
+                    st.write(f"{i+1}. Error generating question")
+
+                progress.progress((i+1)/num_qs)
+                time.sleep(0.2)
+
+            st.balloons()
